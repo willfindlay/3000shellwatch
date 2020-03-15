@@ -1,0 +1,31 @@
+==Introduction==
+In this tutorial, we will be playing with eBPF in more detail than you have seen previously.
+Parts of this tutorial may be slightly confusing. That is okay. You are learning a completely
+new programming paradigm in one tutorial and you are not expected to master it. The primary goal here
+is to understand the difference between kernel modules and BPF programs, and be able to explain
+at a high level how they work.
+
+Throughout this tutorial, you may wish to [https://github.com/iovisor/bcc/blob/master/docs/reference_guide refer to the bcc documentation].
+
+To get started, we will first examine the source code for <tt>3000shellwatch.py</tt> and <tt>bpf_program.c</tt>,
+the userspace and kernelspace components of our BPF program respectively.
+
+==Getting Started==
+# Open <tt>3000shellwatch.py</tt> and <tt>bpf_program.c</tt>. Try to get an idea of the following (if you are stuck, check the documentation linked above):
+#* What is a tracepoint? What is a kprobe? What is a uprobe? What are their similarities and differences? <tt>bpf_program.c</tt> contains examples of all three.
+#* How do we pass events from kernelspace to userspace?
+#* Do you notice any big differences between BPF programs and kernel modules? What things have you seen in kernel modules that are missing in the BPF program?
+#* BPF programs are supposed to be completely production-safe due to the BPF verifier. Do you think it is possible to cause a kernel panic from a BPF program? Make a guess now, you will have a chance to test your guess later.
+#* Run a familiar <tt>trace</tt> command of your choice from one of the previous tutorials, but append the <tt>-v</tt> flag to the end of the command. <tt>trace</tt> will now output the source code for the BPF program it generated. How does this output compare with the hand written BPF program in <tt>bpf_program.c</tt>? Do you think it would be possible to write one long <tt>trace</tt> command to do the same thing as <tt>3000shellwatch.py</tt>?
+
+==Playing with 3000shellwatch==
+# Open two terminals. In one terminal, run <tt>./3000shell</tt>, and in another terminal run <tt>sudo ./3000shellwatch.py -p `pidof 3000shell`</tt>. Run a several commands in <tt>3000shell</tt> and observe the output of <tt>3000shellwatch.py</tt>. What system calls is <tt>3000shell</tt> generating according to <tt>3000shellwatch.py</tt>? Compare this output with that of <tt>strace</tt>.
+# Let's try to make <tt>3000shellwatch.py</tt> crash the kernel. Modify the tracepoint on lines 69-95 to do something dangerous like dereferencing a NULL pointer. Run your BPF program. What is all that output? Did you crash your kernel or did something else happen?
+# Can you user kernelspace helper functions in BPF programs? Try including a header file and calling a kernel function like <tt>copy_to_user</tt>. What happens when you try to run your program?
+# Could you write a kernel module that does everything our BPF program does? How hard would this be?
+# Optional: See if you can implement your own tracepoint in <tt>3000shellwatch</tt>. To do this, you need to do the following:
+#* Examine the list of available tracepoints with <tt>sudo tplist</tt>. You can search for specific strings by providing it an optional argument. When you find one that looks promising, you can view it in detail by passing the <tt>-v</tt> flag. If you're looking for an easy suggestion, try <tt>syscalls:sys_enter_write</tt>.
+#* Add your own struct definition that will contain data from the event.
+#* Add your own perf event buffer that will pass event data to userspace.
+#* Using the same syntax as the existing tracepoint (lines 69-95), add in the definition of your tracepoint.
+#* Using the same syntax from the perf buffers in the userspace python script (e.g. lines 25-29), attach your perf buffer so that it will produce output.
