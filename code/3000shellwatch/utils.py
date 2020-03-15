@@ -24,6 +24,6 @@ def syscall_name(num):
 
 def syscall_ret(code):
     try:
-        return str(code) if code > 0 else errorcode[-code]
+        return str(code) if code > 0 else '-' + errorcode[-code]
     except KeyError:
         return str(code)

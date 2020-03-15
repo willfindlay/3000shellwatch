@@ -25,7 +25,7 @@ bpf = BPF(src_file='bpf_program.c', cflags=flags)
 # Define a hook for syscall_events perf buffer
 def syscall_events(cpu, data, size):
     event = bpf['syscall_events'].event(data)
-    print(f'Hello system call world! {syscall_name(event.syscall)} = {syscall_ret(event.ret)}')
+    print(f'syscall {syscall_name(event.syscall):<16s} = {syscall_ret(event.ret):>8s}')
 bpf['syscall_events'].open_perf_buffer(syscall_events)
 
 if __name__ == '__main__':
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     try:
         while 1:
             bpf.perf_buffer_poll(30)
-            time.sleep(1)
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print(file=sys.stderr)
         print('Goodbye BPF world!', file=sys.stderr)
