@@ -3,6 +3,8 @@
 
 /* Type definitions below this line --------------------------------- */
 
+#define MAX_STRLEN 32
+
 /* This struct will contain useful information about system calls.
  * We will use to to pass data between system call tracepoints and
  * to return useful information back to userspace. */
@@ -14,12 +16,26 @@ struct syscall_event
     long ret;
 };
 
+struct fgets_event
+{
+    u32 pid;
+    u32 tid;
+    void *bufptr;
+    char str[MAX_STRLEN];
+};
+
 /* Map definitions below this line ---------------------------------- */
 
 /* This is a perf event buffer. Perf event buffers allow us
  * to submit events to userspace. Our userspace program will
  * read submitted events at regular intervals. */
 BPF_PERF_OUTPUT(syscall_events);
+BPF_PERF_OUTPUT(fgets_events);
+
+/* This is used to store intermediate values
+ * between entry and exit points. For example, storing the argument
+ * to fgets and printing it on return. */
+BPF_ARRAY(fgets_intermediate, struct fgets_event, 1);
 
 /* Helper functions below this line --------------------------------- */
 
@@ -66,7 +82,42 @@ TRACEPOINT_PROBE(raw_syscalls, sys_exit)
     return 0;
 }
 
-kprobe__handle_signal()
+int uprobe_fgets(struct pt_regs *ctx)
 {
+    /* Filter PID */
+    if (filter())
+        return 0;
+
+    int zero = 0;
+
+    struct fgets_event *event = fgets_intermediate.lookup(&zero);
+    if (!event)
+        return -1;
+
+    /* Read information into intermediate event */
+    event->bufptr = (void *)PT_REGS_PARM1(ctx);
+    event->pid = (u32)(bpf_get_current_pid_tgid() >> 32);
+    event->tid = (u32)bpf_get_current_pid_tgid();
+
+    return 0;
+}
+
+int uretprobe_fgets(struct pt_regs *ctx)
+{
+    /* Filter PID */
+    if (filter())
+        return 0;
+
+    int zero = 0;
+
+    struct fgets_event *event = fgets_intermediate.lookup(&zero);
+    if (!event)
+        return -1;
+
+    /* Read buffer into event.str */
+    bpf_probe_read_str(event->str, sizeof(event->str), event->bufptr);
+
+    fgets_events.perf_submit(ctx, event, sizeof(*event));
+
     return 0;
 }

@@ -28,6 +28,16 @@ def syscall_events(cpu, data, size):
     print(f'syscall {syscall_name(event.syscall):<16s} = {syscall_ret(event.ret):>8s}')
 bpf['syscall_events'].open_perf_buffer(syscall_events)
 
+# Define a hook for fgets_events perf buffer
+def fgets_events(cpu, data, size):
+    event = bpf['fgets_events'].event(data)
+    print(f'pid {event.pid} wrote {event.str.decode("utf-8")}')
+bpf['fgets_events'].open_perf_buffer(fgets_events)
+
+# Attach uprobes
+bpf.attach_uprobe(name='c', sym='fgets', fn_name='uprobe_fgets')
+bpf.attach_uretprobe(name='c', sym='fgets', fn_name='uretprobe_fgets')
+
 if __name__ == '__main__':
     print(f'Tracing pid {args.pid}, ctrl-c to exit...', file=sys.stderr)
     try:
